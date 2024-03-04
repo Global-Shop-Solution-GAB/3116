@@ -1,0 +1,1117 @@
+Program.Sub.ScreenSU.Start
+gui.Process..create
+gui.Process..caption("Processing...")
+gui.Process..size(3450,1680)
+gui.Process..position(0,0)
+gui.Process..event(unload,process_unload)
+gui.Process..alwaysontop(False)
+gui.Process..fontname("Arial")
+gui.Process..fontsize(8)
+gui.Process..forecolor(0)
+gui.Process..fontstyle(,,,,)
+gui.Process..BackColor(-2147483633)
+gui.Process..controlbox(True)
+gui.Process..maxbutton(False)
+gui.Process..minbutton(False)
+gui.Process..mousepointer(0)
+gui.Process..moveable(True)
+gui.Process..sizeable(True)
+gui.Process..ShowInTaskBar(True)
+gui.Process..titlebar(True)
+gui.Process.lbl1.create(label,"Processing...",True,2955,525,1,200,200,True,0,Arial,24,-2147483633,0)
+gui.Process.lblstatus.create(label,"",True,1935,255,1,300,800,True,0,Arial,8,-2147483633,0)
+
+
+gui.F_New_Parts..create
+gui.F_New_Parts..caption("New Parts")
+gui.F_New_Parts..size(8450,5200)
+gui.F_New_Parts..position(0,0)
+gui.F_New_Parts..event(resize,f_new_parts_resize)
+gui.F_New_Parts..event(unload,f_new_parts_unload)
+gui.F_New_Parts..alwaysontop(False)
+gui.F_New_Parts..fontname("Arial")
+gui.F_New_Parts..fontsize(8)
+gui.F_New_Parts..forecolor(0)
+gui.F_New_Parts..fontstyle(,,,,)
+gui.F_New_Parts..BackColor(-2147483633)
+gui.F_New_Parts..controlbox(True)
+gui.F_New_Parts..maxbutton(True)
+gui.F_New_Parts..minbutton(True)
+gui.F_New_Parts..mousepointer(0)
+gui.F_New_Parts..moveable(True)
+gui.F_New_Parts..sizeable(True)
+gui.F_New_Parts..ShowInTaskBar(True)
+gui.F_New_Parts..titlebar(True)
+gui.F_New_Parts.gsfgParts.create(gsflexgrid)
+gui.F_New_Parts.gsfgParts.FixedRows(0)
+gui.F_New_Parts.gsfgParts.FixedCols(0)
+gui.F_New_Parts.gsfgParts.visible(True)
+gui.F_New_Parts.gsfgParts.size(8000,4000)
+gui.F_New_Parts.gsfgParts.zorder(0)
+gui.F_New_Parts.gsfgParts.position(100,100)
+gui.F_New_Parts.gsfgParts.enabled(True)
+gui.F_New_Parts.cmdSave.create(button)
+gui.F_New_Parts.cmdSave.caption("Save")
+gui.F_New_Parts.cmdSave.visible(True)
+gui.F_New_Parts.cmdSave.size(855,375)
+gui.F_New_Parts.cmdSave.zorder(0)
+gui.F_New_Parts.cmdSave.position(100,4200)
+gui.F_New_Parts.cmdSave.enabled(True)
+gui.F_New_Parts.cmdSave.fontname("Arial")
+gui.F_New_Parts.cmdSave.fontsize(8)
+gui.F_New_Parts.cmdSave.event(click,cmdsave_click)
+
+
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Variable.UDT.ROUTER.Define("Number",String)
+Variable.UDT.ROUTER.Define("LMO",String)
+Variable.UDT.ROUTER.Define("Workcenter",string)
+Variable.UDT.ROUTER.Define("Operation",String)
+Variable.UDT.ROUTER.Define("RunTime",String)
+Variable.UDT.ROUTER.Define("Comment",String)
+Variable.UDT.ROUTER.Define("Part",String)
+Variable.UDT.ROUTER.Define("UM",String)
+Variable.UDT.ROUTER.Define("OverLap",String)
+
+Variable.uGlobal.uROUTER.Declare("ROUTER")
+Variable.Global.Lines.Declare(Long,-1)
+
+Variable.UDT.BOM.Define("Parent",String)
+Variable.UDT.BOM.Define("Part",String)
+Variable.UDT.BOM.Define("Cost",Float)
+Variable.UDT.BOM.Define("UM",String)
+Variable.UDT.BOM.Define("Source",String)
+Variable.Global.ParentData.Declare(String)
+Variable.uGlobal.uBOMUpdate.Declare("BOM")
+Variable.Global.BOMLOAD.Declare(String)
+Variable.Global.sPL.Declare(String)
+Variable.Global.sDescription.Declare(String)
+Variable.Global.fLaborRate.Declare(Float,0)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Custom Window Excel to Bom/Router Import
+'In 05/11, new quotes (2283 & 2397) were added to change ATG_MARK_BOM.gas.  The script was not rewritten in preparation for these changes as originally intended, but I attempted to at least break it up into readable subroutines.  Refer to ATG_MARK_BOM_Working-Before rewrite.gas for working version prior to this break up into subroutines and changes-SMC
+V.Global.fileloc.Declare(String)
+V.Local.iC.declare(Long)
+
+F.ODBC.Connection!Conn.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+Function.Intrinsic.UI.ShowOpenFileDialog("","*.xls","",Variable.Global.FileLoc)
+
+Gui.F_New_Parts.gsfgParts.Rows(1)
+Gui.F_New_Parts.gsfgParts.Cols(6)
+Gui.F_New_Parts.gsfgParts.TextMatrix(0,0,"Part")
+Gui.F_New_Parts.gsfgParts.ColWidth(0,2500)
+Gui.F_New_Parts.gsfgParts.TextMatrix(1,0,"Description")
+Gui.F_New_Parts.gsfgParts.ColWidth(1,3500)
+Gui.F_New_Parts.gsfgParts.TextMatrix(2,0,"Cost")
+Gui.F_New_Parts.gsfgParts.ColWidth(2,800)
+Gui.F_New_Parts.gsfgParts.TextMatrix(3,0,"PL")
+Gui.F_New_Parts.gsfgParts.ColWidth(3,800)
+Gui.F_New_Parts.gsfgParts.TextMatrix(4,0,"UM")
+Gui.F_New_Parts.gsfgParts.ColWidth(4,0)
+Gui.F_New_Parts.gsfgParts.TextMatrix(5,0,"Source")
+Gui.F_New_Parts.gsfgParts.ColWidth(5,0)
+
+Gui.F_New_Parts.gsfgParts.BuildStyle(1,0,"Type","Locked","True")
+F.Intrinsic.Control.For(V.Local.iC,0,3,1)
+	Gui.F_New_Parts.gsfgParts.BuildStyle(1,V.Local.iC,"Format","Alignment","2")
+F.Intrinsic.Control.Next(V.Local.iC)
+
+Gui.F_New_Parts.gsfgParts.Rows(2)
+Gui.F_New_Parts.gsfgParts.ApplyStyle(1,1)
+Gui.F_New_Parts.gsfgParts.FixedRows(1)
+
+F.Intrinsic.Control.CallSub(Bomupload)
+
+Program.Sub.Main.End
+
+Program.Sub.ROUTERClear.Start
+
+V.uGlobal.uROUTER.Redim(0,0)
+V.Global.Lines.Set(-1)
+
+Program.Sub.ROUTERClear.End
+
+Program.Sub.ROUTERGenerate.Start
+V.Local.filedir.Declare(String)
+V.Local.filename.Declare(String)
+V.Local.ROUTERload.Declare(String)
+V.Local.temp.Declare(String)
+V.Local.ROUTER.Declare(String)
+V.Local.ix.Declare(Long)
+'file layout
+'    '05  EX-RT-NUMBER             PIC X(20).
+'    '05  EX-RT-LMO                PIC X(01).
+'    '05  EX-RT-WORKCENTER         PIC X(04).
+'    '05  EX-RT-OPERATION          PIC X(06).
+'    '05  EX-RT-OVERLAP            PIC X(16).
+'    '05  EX-RT-RUN-TIME           PIC X(16).
+'    '05  EX-RT-COMMENT            PIC X(30).
+'    '05  EX-RT-PART               PIC X(20).
+'    '05  EX-RT-UM                 PIC X(02).
+
+
+'loop through UDT
+F.Intrinsic.Control.For(V.Local.ix,V.uGlobal.uROUTER.LBound,V.uglobal.uROUTER.UBound,1)
+	F.Intrinsic.Control.If(V.uGlobal.uROUTER(v.Local.ix)!Number,<>,"")
+		F.Intrinsic.String.Concat(V.Local.ROUTER,V.uGlobal.uROUTER(v.Local.ix)!Number,V.uGlobal.uROUTER(v.Local.ix)!LMO,V.uGlobal.uROUTER(v.Local.ix)!WorkCenter,V.uGlobal.uROUTER(v.Local.ix)!Operation,V.local.ROUTER)
+		F.Intrinsic.Control.If(V.Local.ix,<>,V.uGlobal.uROUTER.UBound)
+			F.Intrinsic.string.Concat(V.Local.ROUTER,V.uGlobal.uROUTER(v.Local.ix)!overlap,V.uGlobal.uROUTER(v.Local.ix)!RunTime,V.uGlobal.uROUTER(v.Local.ix)!Comment,V.uGlobal.uROUTER(v.Local.ix)!Part,V.uGlobal.uROUTER(v.Local.ix)!UM,V.Ambient.newline,V.Local.ROUTER)
+		F.Intrinsic.Control.elseIf(V.Local.ix,=,V.uGlobal.uROUTER.UBound)
+			F.Intrinsic.string.Concat(V.Local.ROUTER,V.uGlobal.uROUTER(v.Local.ix)!overlap,V.uGlobal.uROUTER(v.Local.ix)!RunTime,V.uGlobal.uROUTER(v.Local.ix)!Comment,V.uGlobal.uROUTER(v.Local.ix)!Part,V.uGlobal.uROUTER(v.Local.ix)!UM,V.Local.ROUTER)
+		F.Intrinsic.Control.endif
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(V.Local.ix)
+
+F.Intrinsic.String.Concat("LB",V.Caller.Terminal,V.Caller.CompanyCode,V.Local.filename)
+'output file
+F.Intrinsic.String.Concat(V.Caller.FilesDir,"\",V.Local.filename,V.Local.filedir)
+F.Intrinsic.File.String2File(V.Local.filedir,"")
+F.Intrinsic.File.String2File(V.Local.filedir,V.Local.ROUTER)
+
+
+F.Intrinsic.String.RPad(V.Caller.User," ",8,V.Local.temp)
+F.Intrinsic.String.Concat(V.Ambient.DblQuote,V.Caller.CompanyCode,V.Caller.Terminal,"SUPERVSR",V.Local.filename,V.Ambient.DblQuote,V.Local.ROUTERLOAD)
+F.Intrinsic.Control.DoEvents
+'F.Intrinsic.UI.Sleep(1)
+F.Intrinsic.Task.LaunchGSSSync("XUPLRTR3","-c",V.Local.ROUTERLOAD)
+
+Program.Sub.ROUTERGenerate.End
+
+Program.Sub.ROUTERAddRecord.Start
+'arguments, Number, part, RunTime, pl, Comment, um, lmo,worcenter, overlap
+'LMO need to be C for comment
+'LMO needs to be L for workcenter
+'LMO needs to be M for material RunTime is quantity when LMO is M
+
+V.Local.shold.Declare(String)
+
+F.Intrinsic.control.If(V.Global.Lines,=,-1)
+	V.uGlobal.uROUTER.Redim(0,0)
+	V.Global.Lines.Set(0)
+F.Intrinsic.Control.ElseIf(V.Global.Lines,<>,-1)
+	F.Intrinsic.Math.Add(V.Global.Lines,1,V.Global.lines)
+	V.uGlobal.uROUTER.Redimpreserve(0,V.Global.Lines)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.String.RPad(V.Args.Number," ",20,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,20,V.Local.shold)
+V.uGlobal.uROUTER(v.Global.Lines)!Number.set(V.local.shold)
+
+F.Intrinsic.String.RPad(V.Args.LMO," ",1,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,1,V.Local.shold)
+V.uGlobal.uROUTER(v.Global.Lines)!LMO.set(V.local.shold)
+
+F.Intrinsic.String.RPad(V.Args.WorkCenter," ",4,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,4,V.Local.shold)
+V.uGlobal.uROUTER(v.Global.Lines)!WorkCenter.set(V.local.shold)
+
+F.Intrinsic.String.Format(V.Args.RunTime,"0.0000",V.Local.shold)
+F.Intrinsic.String.RPad(V.Local.shold," ",16,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,16,V.Local.shold)
+V.uGlobal.uROUTER(v.Global.Lines)!RunTime.set(V.local.shold)
+
+F.Intrinsic.String.RPad(V.Args.PL," ",6,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,6,V.Local.shold)
+V.uGlobal.uROUTER(v.Global.Lines)!Operation.set(V.local.shold)
+
+F.Intrinsic.String.RPad(V.Args.Comment," ",30,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,30,V.Local.shold)
+V.uGlobal.uROUTER(v.Global.Lines)!Comment.set(V.local.shold)
+
+F.Intrinsic.String.RPad(V.Args.Part," ",20,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,20,V.Local.shold)
+V.uGlobal.uROUTER(v.Global.Lines)!Part.set(V.local.shold)
+
+F.Intrinsic.String.RPad(V.Args.UM," ",2,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,2,V.Local.shold)
+V.uGlobal.uROUTER(v.Global.Lines)!UM.set(V.local.shold)
+
+F.Intrinsic.String.RPad(V.Args.OverLap," ",16,V.Local.shold)
+F.Intrinsic.String.Left(V.Local.shold,16,V.Local.shold)
+V.uGlobal.uROUTER(v.Global.Lines)!Overlap.set(V.local.shold)
+
+Program.Sub.ROUTERAddRecord.End
+
+Program.Sub.BOMUpload.Start
+V.Local.sReady.declare(String)
+V.Global.ParentData.Redim(0,3)
+V.uGlobal.uBOMUpdate.Redim(0,0)
+
+Function.Intrinsic.Control.If(Variable.Global.FileLoc,=,"***CANCEL***")
+F.Intrinsic.Control.End
+Function.Intrinsic.Control.EndIf
+
+Gui.Process..Show
+Gui.Process.lblstatus.Caption("Uploading BOM")
+
+F.Automation.MSExcel.CreateAppObject("ExcelApp")
+F.Automation.MSExcel.OpenWorkbook("ExcelApp","BOM",V.Global.FileLoc)
+F.Automation.MSExcel.OpenWorksheet("ExcelApp","ROUTER",1)
+
+F.Automation.MSExcel.ReadCell("ROUTER",1,1,V.Local.sReady)
+F.Intrinsic.String.Trim(V.Local.sReady.UCase,V.Local.sReady)
+F.Intrinsic.Control.If(V.Local.sReady,<>,"READY")
+	F.Intrinsic.UI.Msgbox("This is an invalid spreadsheet.  Cell A1 must read 'READY'","Invalid Spreadsheet")
+'	F.Intrinsic.Control.CallSub(Destroy_object)
+	F.Intrinsic.Control.CallSub(Process_unload)
+F.Intrinsic.Control.EndIf
+'F.Automation.MSExcel.ReadCell("ROUTER",1,2,V.global.ParentData(0))
+F.Automation.MSExcel.ReadCell("ROUTER",2,2,V.global.ParentData(0))
+'F.Intrinsic.Debug.InvokeDebugger
+F.Intrinsic.Debug.Stop
+
+F.Automation.MSExcel.ReadCell("ROUTER",2,4,V.Global.sPL)
+F.Intrinsic.String.Left(V.Global.sPL.Trim,2,V.Global.sPL)
+F.Automation.MSExcel.ReadCell("ROUTER",2,3,V.Global.sDescription)
+F.Automation.MSExcel.ReadCell("ROUTER",2,5,V.Global.fLaborRate)
+F.Intrinsic.Control.CallSub(Check_bom)
+F.Intrinsic.Control.CallSub(New_parts)
+
+
+
+Program.Sub.BOMUpload.End
+
+program.sub.process_unload.start
+F.ODBC.Connection!Conn.Close
+f.Intrinsic.Control.CallSub(Destroy_Object)
+F.Intrinsic.Control.End
+
+program.sub.process_unload.end
+
+Program.Sub.BOM_Upload_Old.Start
+
+Program.Sub.BOM_Upload_Old.End
+
+Program.Sub.Check_BOM.Start
+V.Local.sSQL.Declare(String)
+V.Local.iR.Declare(Long)
+V.Local.sParams.Declare(String)
+
+F.Intrinsic.String.Concat("SELECT * FROM BOM_MSTR WHERE PARENT='",V.global.ParentData(0),"'",V.Local.sSQL)
+
+F.ODBC.Connection!Conn.OpenRecordsetRO("RSTBOM",V.Local.sSQL)
+
+F.Intrinsic.Control.If(V.ODBC.Conn!RSTBOM.EOF,=,False)
+	F.Intrinsic.UI.Msgbox("BOM Exists.  Do you want to overwrite?","BOM Exists.",4,V.Local.ir)
+	F.Intrinsic.Control.If(V.Local.ir,=,7)
+		F.Intrinsic.Control.CallSub(Destroy_object)
+		F.Intrinsic.Control.End
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+F.ODBC.Conn!RSTBOM.Close
+
+F.Intrinsic.String.Concat("DELETE FROM BOM_MSTR WHERE PARENT='",V.global.ParentData(0),"'",V.Local.sSQL)
+F.ODBC.Connection!Conn.Execute(V.Local.sSQL)
+
+'SMC 1/12/11 - Added callwrapper to delete routers prior to generate
+'______________
+F.Intrinsic.String.Concat("SELECT * FROM ROUTER_HEADER WHERE ROUTER='",V.global.ParentData(0),"'",V.Local.sSQL)
+F.ODBC.Connection!Conn.OpenRecordsetRO("rstCheck",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.Conn!rstCheck.EOF,<>,True)
+	F.ODBC.Conn!rstCheck.Close
+	F.Intrinsic.String.Concat("S!*!",V.global.ParentData(0),V.Local.sParams)
+	F.Global.General.CallWrapperSync("400000",V.Local.sParams)
+F.Intrinsic.Control.Else
+	F.ODBC.Conn!rstCheck.Close
+F.Intrinsic.Control.EndIf
+'______________
+
+Program.Sub.Check_BOM.End
+
+Program.Sub.Create_Boms.Start
+V.Local.Mark.Declare(String)
+V.Local.ldprogram.Declare(String)
+V.Local.qty.Declare(String)
+V.Local.desc.Declare(String)
+V.Local.fcost.Declare(Float)
+V.Local.BOMLOAD.Declare(String)
+V.Local.iUBound.declare(Long)
+V.Local.row.declare(Long)
+V.Local.filedir.declare(String)
+V.Local.temp.declare(String)
+V.Local.filename.declare(String)
+V.Local.sSQL.declare(String)
+
+'Part Header
+F.Intrinsic.String.RPad(V.global.ParentData(0)," ",20,V.global.ParentData(0))
+'Description
+F.Intrinsic.String.RPad(V.Global.sDescription," ",30,V.global.ParentData(1))
+'F.Intrinsic.String.RPad(V.global.ParentData(0)," ",30,V.global.ParentData(1))
+
+F.Intrinsic.String.Concat(V.global.ParentData(0),V.global.ParentData(0),"                ",V.global.ParentData(1),"    ","          ","                    ",V.Local.ldprogram)
+'F.Intrinsic.Debug.InvokeDebugger
+F.Intrinsic.Debug.Stop
+'V.Local.row.Set(3)
+F.Intrinsic.String.Concat("SELECT DESCRIPTION FROM INVENTORY_MSTR WHERE PART='",V.global.ParentData(0),"' AND DESCRIPTION<>'",V.global.ParentData(1).Trim,"'",V.Local.sSQL)
+F.ODBC.Connection!Conn.OpenRecordsetRW("rstPart",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.Conn!rstPart.EOF,<>,True)
+	F.ODBC.Conn!rstPart.Set!DESCRIPTION(V.Global.ParentData(1).Trim)
+	F.ODBC.Conn!rstPart.Update
+F.Intrinsic.Control.EndIf
+F.ODBC.Conn!rstPart.Close
+
+V.Local.row.Set(4)
+F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,1,V.Local.mark)
+F.Intrinsic.Control.DoUntil(V.Local.Mark,=,"")
+	V.uGlobal.uBOMUpdate(v.Local.iuBound)!Parent.Set(V.global.ParentData(0).Trim)
+	V.uGlobal.uBOMUpdate(v.Local.iuBound)!UM.Set("EA")
+	V.uGlobal.uBOMUpdate(v.Local.iuBound)!SOURCE.Set("F")
+
+	F.Intrinsic.String.Concat(V.global.ParentData(0).Trim,V.Local.Mark.Trim,V.Local.Mark)
+	V.uGlobal.uBOMUpdate(v.Local.iuBound)!Part.Set(V.Local.Mark)
+	F.Intrinsic.String.RPad(V.Local.Mark," ",20,V.Local.Mark)
+	F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,2,V.Local.qty)
+	F.Intrinsic.String.RPad(V.Local.qty.Trim," ",16,V.Local.qty)
+	F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,3,V.Local.desc)
+	'Quote 2283 - 1?: Cell to be added for Description
+	F.Intrinsic.String.RPad(V.Local.desc," ",30,V.Local.desc)
+'	F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,4,V.Local.fCost)
+'	F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,5,V.Local.fCost)
+'	V.uGlobal.uBOMUpdate(v.Local.iuBound)!Cost.Set(V.Local.fCost)
+	'create part source F
+	
+	F.Global.Inventory.CreatePart(V.uGlobal.uBOMUpdate(v.Local.iuBound)!Part,V.uGlobal.uBOMUpdate(v.Local.iuBound)!UM,V.Local.desc.RTrim,"","",V.uGlobal.uBOMUpdate(v.Local.iuBound)!Source,"","",0,"NOMAINT ")
+	F.Intrinsic.Debug.Stop
+
+	'After part is created update standard costs based on Labor & Material costs in cols 4&5 for each mark
+	F.Intrinsic.Control.CallSub(Mark_inv_update,"Part",V.uGlobal.uBOMUpdate(v.Local.iUBound)!Part,"iR",V.Local.row)
+	V.uGlobal.uBOMUpdate(v.Local.iuBound)!Cost.Set(V.Args.Cost)
+
+	F.Intrinsic.String.Concat(V.Local.ldprogram,V.Ambient.NewLine,V.global.ParentData(0),V.Local.Mark,V.Local.qty,V.Local.desc,"              ","N",V.Local.ldprogram)
+	F.Intrinsic.Math.Add(V.Local.row,1,V.Local.row)
+	F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,1,V.Local.mark)
+	F.Intrinsic.Control.If(V.Local.Mark,<>,"")
+		V.Local.iuBound.Set(V.uGlobal.uBOMUpdate.UBound)
+		F.Intrinsic.Math.Add(V.Local.iuBound,1,V.Local.iuBound)
+		V.uGlobal.uBOMUpdate.RedimPreserve(0,V.Local.iuBound)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Loop
+F.Intrinsic.Debug.Stop
+
+F.Intrinsic.String.Concat(V.Caller.FilesDir,"\","LB",V.Caller.Terminal,V.Caller.CompanyCode,V.Local.filedir)
+F.Intrinsic.File.String2File(V.Local.filedir,V.Local.ldprogram)
+
+F.Intrinsic.String.Concat("LB",V.Caller.Terminal,V.Caller.CompanyCode,V.Local.filename)
+F.Intrinsic.String.RPad(V.Caller.User," ",8,V.Local.temp)
+F.Intrinsic.String.Concat(V.Ambient.DblQuote,V.Caller.CompanyCode,V.Caller.Terminal,"SUPERVSR",V.Local.filename,V.Ambient.DblQuote,V.global.BOMLOAD)
+'F.Intrinsic.UI.Msgbox(V.Local.BOMLOAD)
+F.Intrinsic.Task.LaunchGSSSync("XUPLBOMF","-c",V.global.BOMLOAD)
+
+F.Intrinsic.String.Concat("SELECT * FROM BOM_ENG WHERE PART='",V.Global.ParentData(0),"' AND DESCRIPTION<>'",V.Global.ParentData(1),"'",V.Local.sSQL)
+F.ODBC.Connection!Conn.OpenRecordsetRW("rstBom",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.Conn!RSTBOM.EOF,<>,True)
+	F.ODBC.Conn!RSTBOM.Set!DESCRIPTION(V.Global.ParentData(1))
+	F.ODBC.Conn!RSTBOM.Update
+F.Intrinsic.Control.EndIf
+F.ODBC.Conn!RSTBOM.Close
+
+'F.Intrinsic.String.Concat("UPDATE BOM_MSTR SET SOURCE='F' WHERE PARENT='",V.global.ParentData(0),"'",V.Local.sSQL)
+'F.ODBC.Connection!Conn.Execute(V.Local.sSQL)
+
+
+
+Program.Sub.Create_Boms.End
+
+Program.Sub.Delete_Bom_Router.Start
+V.Local.sSQL.declare(String)
+V.Local.sParams.declare(String)
+
+F.Intrinsic.String.Concat("DELETE FROM BOM_MSTR WHERE PARENT='",V.args.Mark,"'",V.Local.sSQL)
+F.ODBC.Connection!Conn.Execute(V.Local.sSQL)
+
+'SMC 1/7/11 - Added callwrapper to delete routers prior to generate
+'______________
+F.Intrinsic.String.Concat("SELECT * FROM ROUTER_HEADER WHERE ROUTER='",V.args.Mark,"'",V.Local.sSQL)
+F.ODBC.Connection!Conn.OpenRecordsetRO("rstCheck",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.Conn!rstCheck.EOF,<>,True)
+	F.ODBC.Conn!rstCheck.Close
+	F.Intrinsic.String.Concat("S!*!",V.args.Mark,V.Local.sParams)
+	F.Global.General.CallWrapperSync("400000",V.Local.sParams)
+F.Intrinsic.Control.Else
+	F.ODBC.Conn!rstCheck.Close
+F.Intrinsic.Control.EndIf
+'______________
+
+Program.Sub.Delete_Bom_Router.End
+
+Program.Sub.Correct_Values.Start
+V.Local.iUBound.declare(Long)
+V.Local.iX.declare(Long)
+V.Local.fCost.declare(Float)
+V.Local.sSQL.declare(String)
+V.Local.cat.declare(String)
+V.Local.bPhantom.Declare(Boolean,False)
+
+'CORRECTS VALUES IN PERVASIVE UPLOADS THAT DID NOT SET WITH BOMUPDATE ARRAY DATA
+V.Local.iUBound.Set(V.Args.iUBound)
+F.Intrinsic.Control.For(V.Local.ix,0,V.Local.iuBound,1)
+
+	F.Intrinsic.String.Concat("SELECT * FROM BOM_MSTR WHERE PARENT='",V.uGlobal.uBOMUpdate(V.Local.ix)!Parent.Trim,"' AND PART='",V.uGlobal.uBOMUpdate(V.Local.ix)!PaRT.Trim,"' ",V.Local.sSQL)
+	F.ODBC.Connection!Conn.OpenRecordsetRW("rstBOM",V.Local.sSQL)
+	F.Intrinsic.Control.If(V.ODBC.conn!RSTBOM.EOF,=,False)
+		F.ODBC.Conn!RSTBOM.Set!UM_INVENTORY(V.uGlobal.uBOMUpdate(V.Local.ix)!UM)
+	F.Intrinsic.Control.EndIf
+	V.Local.fcost.Set(0)
+	F.Intrinsic.String.Concat("Select PART,AMT_COST,UM_INVENTORY,DESCRIPTION From INVENTORY_MSTR Where PART='",V.uGlobal.uBOMUpdate(V.Local.ix)!PaRT.Trim,"' ",V.Local.sSQL)
+	F.ODBC.Connection!Conn.OpenRecordsetRW("rstINV",V.Local.sSQL)
+	F.Intrinsic.Control.If(V.ODBC.Conn!rstINV.EOF,=,False)
+		V.Local.cat.Set("F")
+
+		V.Local.fcost.Set(V.ODBC.Conn!rstINV.FieldValFloat!AMT_COST)
+		F.Intrinsic.String.Concat("UPDATE BOM_ENG SET DESCRIPTION='",V.ODBC.Conn!rstINV.FieldValTrim!DESCRIPTION,"' WHERE PART = '",V.uGlobal.uBOMUpdate(V.Local.ix)!PaRT.Trim,"'",V.Local.sSQL)
+		F.ODBC.Connection!Conn.Execute(V.Local.sSQL)
+		'F.ODBC.Conn!rstINV.Set!UM_INVENTORY(v.uGlobal.uBOMUpdate(V.Local.ix)!UM.Trim)
+'		F.ODBC.Conn!rstINV.Update
+	F.Intrinsic.Control.Else
+		V.Local.cat.Set("J")
+	F.Intrinsic.Control.EndIf
+	F.ODBC.Conn!rstINV.Close
+	F.Intrinsic.Control.If(V.uGlobal.uBOMUpdate(V.Local.ix)!COST,>,0)
+		V.Local.fcost.Set(V.uGlobal.uBOMUpdate(V.Local.ix)!COST)
+	F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.Control.If(V.ODBC.conn!RSTBOM.EOF,=,False)
+		F.ODBC.Conn!RSTBOM.Set!COST(V.Local.fcost)
+	F.Intrinsic.Control.EndIf
+	
+	'Quote 2283 - 2?: For Columns that start with 'E', set to "Purchase to Stock".  Don't delete any code needed to be removed for this, just comment out.
+	F.Intrinsic.String.LEFT(V.uGlobal.uBOMUpdate(V.Local.ix)!PART,5,V.LOCAL.cat)
+	F.Intrinsic.Control.If(V.Local.cat,=,"SOKIT")
+		V.Local.cat.Set("F")
+		V.Local.bPhantom.Set(True)
+	F.Intrinsic.Control.ElseIf(V.Local.cat.left2,=,"SK")
+		V.Local.cat.Set("F")
+		V.Local.bPhantom.Set(True)
+	F.Intrinsic.Control.Else
+		V.Local.bPhantom.Set(False)
+	F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.Control.If(V.ODBC.conn!RSTBOM.EOF,=,False)
+		F.ODBC.Conn!RSTBOM.Set!SOURCE(V.uGlobal.uBOMUpdate(V.Local.ix)!Source.Trim)
+		F.Intrinsic.Control.If(V.Local.bPhantom,=,True)
+			F.Intrinsic.Debug.SetLA("Correcting values for ",V.uGlobal.uBOMUpdate(V.Local.ix)!PaRT.Trim,".  Setting Source=",V.uGlobal.uBOMUpdate(V.Local.ix)!Source.Trim," and setting as PHANTOM part")
+			F.ODBC.Conn!RSTBOM.Set!CATEGORY("P")
+		F.Intrinsic.Control.Else
+			F.Intrinsic.Debug.SetLA("Correcting values for ",V.uGlobal.uBOMUpdate(V.Local.ix)!PaRT.Trim,".  Setting Source=",V.uGlobal.uBOMUpdate(V.Local.ix)!Source.Trim)
+		F.Intrinsic.Control.EndIf
+		F.ODBC.Conn!RSTBOM.Update
+	F.Intrinsic.Control.EndIf
+	F.ODBC.Conn!RSTBOM.Close
+'	F.Intrinsic.String.Concat("Select * from INVENTORY_MST2 where PART='",V.uGlobal.uBOMUpdate(V.Local.ix)!PaRT.Trim,"'",V.Local.sSQL)
+'	F.ODBC.Connection!ConN.OpenRecordsetRW("rstPartUp",V.Local.sSQL)
+'	F.Intrinsic.Control.If(V.ODBC.Conn!rstPartUp.EOF,=,False)
+
+		'F.ODBC.conN!rstPartUp.Set!CODE_SOURCE(v.uGlobal.uBOMUpdate(V.Local.ix)!Source.Trim)
+'		F.ODBC.conn!rstPartUp.Update
+'	F.Intrinsic.Control.EndIf
+'	F.ODBC.conn!rstPartUp.Close
+F.Intrinsic.Control.Next(V.Local.ix)
+
+Program.Sub.Correct_Values.End
+
+Program.Sub.Set_Router_UM.Start
+V.Local.sUM.declare(String)
+V.Local.sSQL.declare(String)
+
+'arguments, Number, part, RunTime, pl, Comment, um, lmo,worcenter, overlap
+'LMO need to be C for comment
+'LMO needs to be L for workcenter
+'LMO needs to be M for material RunTime is quantity when LMO is M
+
+'Upload Header router
+
+F.Intrinsic.String.Concat("Select PART,AMT_COST,UM_INVENTORY From V_INVENTORY_MSTR Where PART='",V.global.ParentData(0).Trim,"' ",V.Local.sSQL)
+F.ODBC.Connection!Conn.OpenRecordsetRO("rstINV",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.Conn!rstINV.EOF,=,False)
+	V.Local.sUM.Set(V.ODBC.Conn!rstINV.FieldValTrim!UM_INVENTORY)
+F.Intrinsic.Control.Else
+	V.Local.sUM.Set("EA")
+F.Intrinsic.Control.EndIf
+F.ODBC.Conn!rstINV.Close
+
+'SMC 12/10/10
+'______________
+'F.Intrinsic.Control.CallSub(Routeraddrecord,"Number",V.global.ParentData(0),"Part",V.global.ParentData(0),"RunTime","","PL","","Comment","","UM",V.Local.sUM,"LMO","","WORKCENTER","","OVERLAP","")
+'
+'F.Intrinsic.Control.CallSub(Routergenerate)
+'F.Intrinsic.Control.CallSub(Routerclear)
+'______________
+F.Intrinsic.String.Concat("SELECT * FROM ROUTER_HEADER WHERE ROUTER_TYPE='H' AND ROUTER='",V.global.ParentData(0),"'",V.Local.sSQL)
+F.ODBC.Connection!Conn.OpenRecordsetRW("rstRouter",V.Local.sSQL)
+F.ODBC.Conn!rstRouter.Set!UM_INVENTORY(V.Local.sUM)
+F.ODBC.Conn!rstRouter.Update
+F.ODBC.Conn!rstRouter.Close
+
+Program.Sub.Set_Router_UM.End
+
+Program.Sub.Router_Upload.Start
+V.Local.Mark.declare(String)
+V.Local.Row.declare(Long)
+V.Local.col.declare(Long)
+V.Local.materialname.declare(String)
+V.Local.temp.declare(String)
+V.Local.LaborCol.declare(Long)
+V.Local.sTempTerminal.declare(String)
+V.Local.WCname.declare(String)
+V.Local.qty.declare(Float)
+V.Local.ROUTERLOAD.declare(String)
+V.Local.sParams.declare(String)
+V.Local.fTemp.declare(Float)
+V.Local.sSQL.declare(String)
+V.Local.suser.declare(String)
+
+'F.Intrinsic.Debug.InvokeDebugger
+'Upload Routers
+'V.Local.row.Set(3)
+V.Local.row.Set(4)
+F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,1,V.Local.mark)
+F.Intrinsic.Control.DoUntil(V.Local.Mark,=,"")
+	'Add Router Header
+
+
+	F.Intrinsic.String.Concat(V.global.ParentData(0).Trim,V.Local.Mark.Trim,V.Local.Mark)
+
+
+'Material should be commented out. JND
+''	F.Intrinsic.Control.CallSub(Routeraddrecord,"Number",V.Local.Mark,"Part",V.Local.Mark,"RunTime","","PL","","Comment","","UM",V.Local.sUM,"LMO","","WORKCENTER","","OVERLAP","")
+'
+'	'Add Router Material Lines
+'	V.Local.col.Set(5)
+	V.Local.col.Set(6)
+'	F.Automation.MSExcel.ReadCell("ROUTER",2,V.Local.col,V.Local.temp)
+	F.Automation.MSExcel.ReadCell("ROUTER",3,V.Local.col,V.Local.temp)
+	F.Intrinsic.String.Split(V.Local.temp,"|",V.Local.materialname)
+	F.Intrinsic.Control.DoUntil(V.Local.materialname(0),=,"")
+'		F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,V.Local.col,V.Local.qty)
+'		F.Intrinsic.Control.If(V.Local.qty,>,0)
+'			F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,2,V.Local.ftemp)
+'			F.Intrinsic.Math.Div(V.Local.qty,V.Local.ftemp,V.Local.qty)
+'			
+'			F.Intrinsic.String.Concat("Select PART,AMT_COST,UM_INVENTORY From V_INVENTORY_MSTR Where PART='",V.Local.materialname(0).Trim,"' ",V.Local.sSQL)
+'			F.ODBC.Connection!Conn.OpenRecordsetRO("rstINV",V.Local.sSQL)
+'			F.Intrinsic.Control.If(V.ODBC.Conn!rstINV.EOF,=,False)
+'				V.Local.sUM.Set(V.ODBC.Conn!rstINV.FieldValTrim!UM_INVENTORY)
+'			F.Intrinsic.Control.Else
+'				V.Local.sUM.Set(V.Local.materialname(1))
+'			F.Intrinsic.Control.EndIf
+'			F.ODBC.Conn!rstINV.Close
+'			F.Intrinsic.String.LEFT(V.Local.materialname(0),5,V.LOCAL.cat)
+'			F.Intrinsic.Control.If(V.Local.cat,<>,"SOKIT")
+''SMC 12/10/10
+''______________
+''				F.Intrinsic.Control.CallSub(Routeraddrecord,"Number",V.Local.Mark,"Part",V.Local.materialname(0),"RunTime",V.Local.qty,"PL","","Comment","","UM",V.Local.sUM,"LMO","M","WORKCENTER","","OVERLAP","")
+''______________
+'			F.Intrinsic.Control.endif
+'		F.Intrinsic.Control.EndIf
+		F.Intrinsic.Math.Add(V.Local.col,1,V.Local.col)
+'		F.Automation.MSExcel.ReadCell("ROUTER",2,V.Local.col,V.Local.temp)
+		F.Automation.MSExcel.ReadCell("ROUTER",3,V.Local.col,V.Local.temp)
+		F.Intrinsic.String.Split(V.Local.temp,"|",V.Local.materialname)
+	F.Intrinsic.Control.Loop
+'-end comment out JND
+
+	F.Intrinsic.String.Concat("TEMPLATE-",V.Caller.Terminal,V.Local.sTempTerminal)
+	'Add Labor Lines
+	F.Intrinsic.Math.Add(V.Local.col,1,V.Local.Laborcol)
+	V.Local.col.Set(V.Local.LaborCol)
+	F.Intrinsic.Debug.Stop
+
+'	F.Automation.MSExcel.ReadCell("ROUTER",2,V.Local.col,V.Local.WCname)
+	F.Automation.MSExcel.ReadCell("ROUTER",3,V.Local.col,V.Local.WCname)
+	F.Intrinsic.Control.DoUntil(V.Local.WCname,=,"")
+		F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,V.Local.col,V.Local.qty)
+		F.Intrinsic.Control.If(V.Local.qty,>,0)
+			F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,2,V.Local.ftemp)
+			F.Intrinsic.Math.Div(V.Local.qty,V.Local.ftemp,V.Local.qty)
+'SMC 12/10/10 -put back put for variable "Number", the template router name TEMPLATE-terminal Number"
+'______________
+'			F.Intrinsic.Control.CallSub(Routeraddrecord,"Number",V.Local.Mark,"Part","","RunTime",V.Local.qty,"PL","","Comment","","UM","HR","LMO","L","WORKCENTER",V.Local.WCname,"OVERLAP","")
+			F.Intrinsic.Control.CallSub(Routeraddrecord,"Number",V.Local.sTempTerminal,"Part","","RunTime",V.Local.qty,"PL","","Comment","","UM","HR","LMO","L","WORKCENTER",V.Local.WCname,"OVERLAP","")
+'______________
+		F.Intrinsic.Control.EndIf
+		F.Intrinsic.Math.Add(V.Local.col,1,V.Local.col)
+'		F.Automation.MSExcel.ReadCell("ROUTER",2,V.Local.col,V.Local.WCname)
+		F.Automation.MSExcel.ReadCell("ROUTER",3,V.Local.col,V.Local.WCname)
+	F.Intrinsic.Control.Loop
+'	F.Intrinsic.Debug.Stop
+	F.Intrinsic.String.Concat("DELETE FROM ROUTER_LINE WHERE ROUTER='",V.Local.sTempTerminal,"'",V.Local.sSQL)
+	F.ODBC.Connection!Conn.Execute(V.Local.sSQL)
+
+'SMC 1/7/11 - Added callwrapper to delete routers prior to generate
+'______________
+	F.Intrinsic.String.Concat("SELECT * FROM ROUTER_HEADER WHERE ROUTER='",V.Local.sTempTerminal,"'",V.Local.sSQL)
+	F.ODBC.Connection!Conn.OpenRecordsetRO("rstCheck",V.Local.sSQL)
+	F.Intrinsic.Control.If(V.ODBC.Conn!rstCheck.EOF,<>,True)
+		F.ODBC.Conn!rstCheck.Close
+		F.Intrinsic.String.Concat("S!*!",V.Local.sTempTerminal,V.Local.sParams)
+		F.Global.General.CallWrapperSync("400000",V.Local.sParams)
+	F.Intrinsic.Control.Else
+		F.ODBC.Conn!rstCheck.Close
+	F.Intrinsic.Control.EndIf
+'______________
+
+	F.INtrinsic.Control.CallSub(Routergenerate)
+	F.Intrinsic.Control.CallSub(Routerclear)
+	
+	F.Intrinsic.String.RPad(V.Local.sTempTerminal," ",20,V.Local.sTempTerminal)
+	F.Intrinsic.String.RPad(V.Local.Mark," ",20,V.Local.Mark)
+	F.Intrinsic.String.RPad(V.Caller.User," ",8,V.Local.suser)
+	F.Intrinsic.String.Concat(V.Ambient.QuadQuote,V.Caller.CompanyCode,V.Caller.Terminal,V.Local.suser,V.Local.sTempTerminal,V.Local.mark,V.Ambient.QuadQuote,V.Local.ROUTERLOAD)
+	F.Intrinsic.Control.DoEvents
+'	F.Intrinsic.UI.Msgbox(V.Local.ROUTERLOAD)
+	F.Intrinsic.Task.LaunchGSSSync("XUPLRTR4","-c",V.Local.ROUTERLOAD)
+
+'	F.Intrinsic.Debug.InvokeDebugger
+	F.Intrinsic.Debug.Stop
+	F.Intrinsic.String.Concat("UPDATE ROUTER_LINE SET RATE=",V.Global.fLaborRate," WHERE ROUTER='",V.Local.Mark,"' AND LMO='L'",V.Local.sSQL)
+	F.ODBC.Connection!Conn.Execute(V.Local.sSQL)
+	'F.Intrinsic.String.Concat("Select PART,AMT_COST,UM_INVENTORY From V_INVENTORY_MSTR Where PART='",V.Local.Mark,"' ",V.Local.sSQL)
+	'F.ODBC.Connection!Conn.OpenRecordsetRO("rstINV",V.Local.sSQL)
+	'F.Intrinsic.Control.If(V.ODBC.Conn!rstINV.EOF,=,False)
+	'	V.Local.sUM.Set(V.ODBC.Conn!rstINV.FieldValTrim!UM_INVENTORY)
+	'F.Intrinsic.Control.Else
+	'	V.Local.sUM.Set("EA")
+	'F.Intrinsic.Control.EndIf
+	'F.ODBC.Conn!rstINV.Close
+	'F.Intrinsic.String.Concat("SELECT * FROM ROUTER_HEADER WHERE ROUTER_TYPE='H' AND ROUTER='",V.Local.Mark,"'",V.Local.sSQL)
+	'F.ODBC.Connection!Conn.OpenRecordsetRW("rstRouter",V.Local.sSQL)
+	'F.ODBC.Conn!rstRouter.Set!UM_INVENTORY(V.Local.sUM)
+	'F.ODBC.Conn!rstRouter.Update
+	'F.ODBC.Conn!rstRouter.Close
+	'READ NEXT ROW
+	F.Intrinsic.Math.Add(V.Local.row,1,V.Local.row)
+	F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,1,V.Local.mark)
+F.Intrinsic.Control.Loop
+
+Program.Sub.Router_Upload.End
+
+Program.Sub.Bom_Children.Start
+V.Local.mark.declare(String)
+V.Local.row.declare(Long)
+V.Local.iUBound.declare(Long)
+V.Local.desc.declare(String)
+V.Local.ldprogram.declare(String)
+V.Local.fCost.declare(Float)
+V.Local.col.declare(Long)
+V.Local.temp.declare(String)
+V.Local.materialname.declare(String)
+V.Local.qty.declare(String)
+V.Local.ftemp.declare(Float)
+V.Local.cat.declare(String)
+V.Local.source.declare(String)
+V.Local.filedir.declare(String)
+V.Local.filename.declare(String)
+V.Local.BOMLoad.declare(String)
+
+V.Local.sSQL.declare(String)
+V.Local.sum.declare(String)
+V.Local.pl.declare(String)
+V.Local.desc1.declare(String)
+V.Local.ldprogram2.declare(String)
+V.Local.filler.declare(String)
+V.Local.filler.Redim(0,3)
+
+'V.Local.row.Set(3)
+V.Local.row.Set(4)
+F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,1,V.Local.mark)
+F.Intrinsic.Control.DoUntil(V.Local.Mark,=,"")
+	V.Local.iuBound.Set(V.uGlobal.uBOMUpdate.UBound)
+	F.Intrinsic.Math.Add(V.Local.iuBound,1,V.Local.iuBound)
+	V.uGlobal.uBOMUpdate.RedimPreserve(0,V.Local.iuBound)
+
+	'Add BOM Header
+	F.Intrinsic.String.Concat(V.global.ParentData(0).Trim,V.Local.Mark.Trim,V.Local.Mark)
+
+	'Part Header
+	F.Intrinsic.String.RPad(V.Local.Mark," ",20,V.Local.Mark)
+	'Description
+	'Quote 2283 - 1?: Cell to be added for Description
+	F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,3,V.Local.desc)
+	F.Intrinsic.String.RPad(V.Local.desc," ",30,V.Local.desc)
+
+	F.Intrinsic.String.Concat(V.Local.Mark,V.Local.Mark,"                ",V.Local.desc,"    ","          ","                    ",V.Local.ldprogram)
+
+	V.uGlobal.uBOMUpdate(v.Local.iuBound)!Parent.Set(V.Local.Mark)
+	V.uGlobal.uBOMUpdate(v.Local.iuBound)!UM.Set("EA")
+'	v.uGlobal.uBOMUpdate(v.Local.iuBound)!Part.Set(V.Local.Mark)
+'	F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,4,V.Local.fCost)
+	F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,5,V.Local.fCost)
+	V.uGlobal.uBOMUpdate(v.Local.iuBound)!Cost.Set(V.Local.fCost)
+	V.uGlobal.uBOMUpdate(v.Local.iuBound)!SOURCE.Set("F")
+
+	F.Intrinsic.Control.CallSub(Delete_bom_router,"Mark",V.Local.Mark)
+	F.Intrinsic.Debug.Stop
+	'Add BOM Components
+'	V.Local.col.Set(5)
+	V.Local.col.Set(6)
+'	F.Intrinsic.Debug.InvokeDebugger
+'	F.Automation.MSExcel.ReadCell("ROUTER",2,V.Local.col,V.Local.temp)
+	F.Automation.MSExcel.ReadCell("ROUTER",3,V.Local.col,V.Local.temp)
+	F.Intrinsic.String.Split(V.Local.temp,"|",V.Local.materialname)
+	F.Intrinsic.Debug.Stop
+	F.Intrinsic.Control.DoUntil(V.Local.materialname(0),=,"")
+		F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,V.Local.col,V.Local.qty)
+		F.Intrinsic.Debug.Stop
+		F.Intrinsic.Control.If(V.Local.qty,>,0)
+			V.Local.iuBound.Set(V.uGlobal.uBOMUpdate.UBound)
+			F.Intrinsic.Math.Add(V.Local.iuBound,1,V.Local.iuBound)
+			V.uGlobal.uBOMUpdate.RedimPreserve(0,V.Local.iuBound)
+
+
+			F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,2,V.Local.ftemp)
+			F.Intrinsic.Math.Div(V.Local.qty,V.Local.ftemp,V.Local.qty)
+			F.Intrinsic.Debug.Stop
+			F.Intrinsic.String.RPad(V.Local.qty.Trim," ",16,V.Local.qty)
+			V.uGlobal.uBOMUpdate(v.Local.iuBound)!Parent.Set(V.Local.Mark)
+			V.uGlobal.uBOMUpdate(v.Local.iuBound)!UM.Set(V.Local.materialname(1))
+			V.uGlobal.uBOMUpdate(v.Local.iuBound)!Part.Set(V.Local.materialname(0))
+			V.uGlobal.uBOMUpdate(v.Local.iuBound)!Cost.Set(0)
+			F.Intrinsic.String.RPad(V.Local.materialname(0)," ",20,V.Local.materialname(0))
+			V.Local.desc.Set("")
+			F.Intrinsic.String.RPad(V.Local.desc," ",30,V.Local.desc)
+			F.Intrinsic.String.LEFT(V.Local.materialname(0),5,V.LOCAL.cat)
+			'Quote 2283 - 2?: For Columns that start with 'E', set to "Purchase to Stock".  Don't delete any code needed to be removed for this, just comment out.
+			F.Intrinsic.Control.If(V.Local.cat,=,"SOKIT")
+				V.Local.cat.Set("P")
+				V.Local.source.Set("F")
+			F.Intrinsic.Control.ElseIf(V.Local.cat.left2,=,"SK")
+				V.Local.cat.Set("P")
+				V.Local.source.Set("F")
+			F.Intrinsic.Control.Else
+				V.Local.cat.Set("N")
+				V.Local.source.Set("J")
+			F.Intrinsic.Control.EndIf
+			V.uGlobal.uBOMUpdate(v.Local.iuBound)!Source.Set(V.Local.source)
+			F.Intrinsic.Debug.Stop
+			'commented out 5/9/11 SMC
+			F.Intrinsic.String.Concat("SELECT * FROM V_INVENTORY_MSTR WHERE PART='",V.Local.materialname(0),"' ",V.Local.sSQL)
+			F.ODBC.Connection!conn.OpenRecordsetRO("rstPart",V.Local.sSQL)
+			F.Intrinsic.Control.If(V.ODBC.conn!rstPart.EOF,=,True)
+'				F.Intrinsic.String.RPad(V.Local.materialname(0)," ",20,V.Local.materialname(0))
+'				F.Intrinsic.String.RPad(V.Local.materialname(1)," ",2,V.Local.sum)
+'				F.Intrinsic.String.RPad(" "," ",30,V.Local.Desc)
+'				F.Intrinsic.String.RPad(""," ",3,V.Local.pl)
+'				F.Intrinsic.String.RPad(""," ",30,V.Local.desc1)
+'				F.Intrinsic.String.RPad(V.Local.filler(0)," ",2,V.Local.filler(0))
+'				F.Intrinsic.String.RPad(V.Local.filler(1)," ",6,V.Local.filler(1))
+'				F.Intrinsic.String.RPad(V.Local.filler(2)," ",30,V.Local.filler(2))
+'				F.Intrinsic.String.RPad(V.Local.filler(3),0,15,V.Local.filler(3))
+'
+'
+'				'Create Part Upload String and upload
+'				F.Intrinsic.String.Concat(V.Ambient.QuadQuote,V.Caller.CompanyCode,V.Caller.Terminal,"UPLOADED  ",V.Local.materialname(0),V.Local.sum,V.Local.desc,V.Local.filler(0),V.Local.pl,V.Local.source,V.Local.filler(1),V.Local.desc1,V.Local.filler(2),V.Local.filler(3),V.Ambient.QuadQuote,V.Local.ldprogram2)
+'
+'				F.Intrinsic.String.Concat(V.Ambient.DblQuote,V.Local.ldprogram2,V.Ambient.DblQuote,V.Local.ldprogram2)
+'				F.Intrinsic.Task.LaunchGSSSync("QTE005C","-C ",V.Local.ldprogram2)
+'				F.Intrinsic.String.Concat("Select * from INVENTORY_MST2 where PART='",V.Local.materialname(0).Trim,"'",V.Local.sSQL)
+'				F.ODBC.Connection!ConN.OpenRecordsetRW("rstPartUp",V.Local.sSQL)
+'				F.Intrinsic.Control.If(V.ODBC.Conn!rstPartUp.EOF,=,False)
+'
+'					F.ODBC.conN!rstPartUp.Set!CODE_SOURCE(V.Local.source)
+'					F.ODBC.conn!rstPartUp.Update
+'				F.Intrinsic.Control.EndIf
+'				F.ODBC.conn!rstPartUp.Close
+'
+			F.Intrinsic.Control.Else
+				V.uGlobal.uBOMUpdate(v.Local.iuBound)!UM.Set(V.ODBC.Conn!rstPart.FieldValTrim!UM_INVENTORY)
+				F.Intrinsic.String.Concat("SELECT * FROM V_INVENTORY_MST2 WHERE PART='",V.Local.materialname(0),"' ",V.Local.sSQL)
+				F.ODBC.Connection!conn.OpenRecordsetRO("rstPart2",V.Local.sSQL)
+				F.Intrinsic.Control.If(V.ODBC.Conn!rstPart2.EOF,=,False)
+					V.Local.source.Set(V.ODBC.Conn!rstPart2.FieldValTrim!CODE_SOURCE)
+					V.uGlobal.uBOMUpdate(v.Local.iuBound)!Source.Set(V.Local.source)
+				F.Intrinsic.Control.EndIf
+				F.ODBC.conn!rstPart2.Close
+			F.Intrinsic.Control.EndIf
+			F.ODBC.conn!rstPart.Close
+
+
+			F.Intrinsic.Debug.Stop
+			F.Intrinsic.String.Concat(V.Local.ldprogram,V.Ambient.NewLine,V.Local.Mark,V.Local.materialname(0),V.Local.qty,V.Local.desc,"              ",V.Local.cat,V.Local.ldprogram)
+
+		F.Intrinsic.Control.EndIf
+		F.Intrinsic.Math.Add(V.Local.col,1,V.Local.col)
+'		F.Automation.MSExcel.ReadCell("ROUTER",2,V.Local.col,V.Local.temp)
+		F.Automation.MSExcel.ReadCell("ROUTER",3,V.Local.col,V.Local.temp)
+		F.Intrinsic.String.Split(V.Local.temp,"|",V.Local.materialname)
+	F.Intrinsic.Control.Loop
+	F.Intrinsic.Debug.Stop
+
+	F.Intrinsic.String.Concat(V.Caller.FilesDir,"\","LB",V.Caller.Terminal,V.Caller.CompanyCode,V.Local.filedir)
+	F.Intrinsic.File.String2File(V.Local.filedir,V.Local.ldprogram)
+
+	F.Intrinsic.String.Concat("LB",V.Caller.Terminal,V.Caller.CompanyCode,V.Local.filename)
+	F.Intrinsic.String.RPad(V.Caller.User," ",8,V.Local.temp)
+	F.Intrinsic.String.Concat(V.Ambient.DblQuote,V.Caller.CompanyCode,V.Caller.Terminal,"SUPERVSR",V.Local.filename,V.Ambient.DblQuote,V.Local.BOMLOAD)
+'	F.Intrinsic.UI.Msgbox(V.Local.BOMLOAD)
+	F.Intrinsic.Debug.Stop
+'	F.Intrinsic.UI.Msgbox(V.Local.BOMLoad)
+	F.Intrinsic.Task.LaunchGSSSync("XUPLBOMF","-c",V.Local.BOMLOAD)
+
+
+	'READ NEXT ROW
+	F.Intrinsic.Math.Add(V.Local.row,1,V.Local.row)
+	F.Automation.MSExcel.ReadCell("ROUTER",V.Local.row,1,V.Local.mark)
+F.Intrinsic.Control.Loop
+F.Intrinsic.Variable.AddRV("iUBound",V.Local.iUBound)
+
+Program.Sub.Bom_Children.End
+
+Program.Sub.Destroy_Object.Start
+V.Local.sError.Declare(String)
+
+F.Intrinsic.Control.SetErrorHandler("Error_Err")
+F.Intrinsic.Control.ClearErrors
+
+F.Automation.Generic.DestroyObject("ROUTER")
+F.Automation.Generic.DestroyObject("BOM")
+F.Automation.Generic.DestroyObject("ExcelApp")
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Error_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+Program.Sub.Destroy_Object.End
+
+Program.Sub.New_Parts.Start
+V.Local.sSQL.declare(String)
+V.Local.iUB.declare(Long,-1)
+V.Local.iC.declare(Long)
+V.Local.iR.declare(Long,0)
+V.Local.iRows.declare(Long)
+V.Local.sTemp.declare(String)
+V.Local.materialname.declare(String)
+
+'F.Intrinsic.Debug.InvokeDebugger
+F.Intrinsic.Debug.Stop
+
+V.Local.iUB.Set(-1)
+V.Local.iC.set(5)
+F.Intrinsic.Control.Do
+	F.Intrinsic.Math.Add(V.Local.iC,1,V.Local.iC)
+	F.Automation.MSExcel.ReadCell("ROUTER",3,V.Local.iC,V.Local.sTemp)
+	F.Intrinsic.String.Split(V.Local.sTemp,"|",V.Local.materialname)
+	F.Intrinsic.Control.If(V.Local.materialname(0),=,"")
+		F.Intrinsic.Control.ExitDo
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.String.Concat("SELECT PART FROM V_INVENTORY_MSTR WHERE PART='",V.Local.materialname(0),"' ",V.Local.sSQL)
+	F.ODBC.Connection!Conn.OpenRecordsetRO("rstPart",V.Local.sSQL)
+	F.Intrinsic.Control.If(V.ODBC.Conn!rstPart.EOF,=,True)
+		f.Intrinsic.Control.If(V.Local.materialname(0).left5,=,"SOKIT")
+			F.Intrinsic.UI.Msgbox("Please create all hardware kits manually before uploading.")
+			F.Intrinsic.Control.CallSub(Process_unload)
+		f.Intrinsic.Control.ElseIf(V.Local.materialname(0).left2,=,"SK")
+			F.Intrinsic.UI.Msgbox("Please create all hardware kits manually before uploading.")
+			F.Intrinsic.Control.CallSub(Process_unload)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.Math.Add(V.Local.iR,1,V.Local.iR)
+			F.Intrinsic.Math.Add(V.Local.iR,1,V.Local.iRows)
+			F.Intrinsic.String.Split(V.Local.sTemp,"|",V.Local.materialname)
+			Gui.F_New_Parts.gsfgParts.Rows(V.Local.iRows)
+			Gui.F_New_Parts.gsfgParts.TextMatrix(0,V.Local.iR,V.Local.materialname(0))
+			F.Intrinsic.Control.If(V.Local.materialname.ubound,>,0)
+				Gui.F_New_Parts.gsfgParts.TextMatrix(4,V.Local.iR,V.Local.materialname(1).trim)
+			F.Intrinsic.Control.Else
+				Gui.F_New_Parts.gsfgParts.TextMatrix(4,V.Local.iR,"FT")
+			F.Intrinsic.Control.EndIf
+			f.Intrinsic.Control.If(V.Local.materialname(0).left1,=,"E")
+				Gui.F_New_Parts.gsfgParts.TextMatrix(5,V.Local.iR,"P")
+			F.Intrinsic.Control.Else
+				Gui.F_New_Parts.gsfgParts.TextMatrix(5,V.Local.iR,"J")
+			F.Intrinsic.Control.EndIf
+			Gui.F_New_Parts.gsfgParts.ApplyStyle(V.Local.iR,1)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Else
+		f.Intrinsic.Control.If(V.Local.materialname(0).left1,=,"E")
+			F.Intrinsic.String.Concat("SELECT CODE_SOURCE FROM V_INVENTORY_MST2 WHERE PART='",V.Local.materialname(0),"' ",V.Local.sSQL)
+			F.ODBC.Connection!Conn.OpenRecordsetRW("rstPart2",V.Local.sSQL)
+			F.Intrinsic.Control.If(V.ODBC.Conn!rstPart2.EOF,<>,True)
+				F.ODBC.Conn!rstPart2.Set!CODE_SOURCE("P")
+				F.ODBC.Conn!rstPart2.Update
+			F.Intrinsic.Control.EndIf
+			F.ODBC.Conn!rstPart2.Close
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.EndIf
+	F.ODBC.Conn!rstPart.Close
+F.Intrinsic.Control.Loop
+
+Gui.F_New_Parts.gsfgParts.FixedRows(1)
+
+F.Intrinsic.Control.If(V.local.iR,>,0)
+	Gui.F_New_Parts..Show
+F.Intrinsic.Control.Else
+	F.Intrinsic.Control.CallSub(Bomupload_cont)
+F.Intrinsic.Control.EndIf
+
+Program.Sub.New_Parts.End
+
+program.sub.f_new_parts_unload.start
+F.Intrinsic.Control.CallSub(Destroy_object)
+F.Intrinsic.Control.CallSub(Process_unload)
+
+program.sub.f_new_parts_unload.end
+
+program.sub.cmdsave_click.start
+V.Local.iRows.declare(Long)
+V.Local.iR.Declare(Long)
+V.Local.sRows.declare(String)
+V.Local.bNumeric.declare(Boolean)
+V.Local.bInvalid.declare(Boolean)
+V.Local.sTemp.declare(String)
+V.Local.sSQL.declare(String)
+V.Local.sParts.declare(String)
+V.Local.sParts.Redim(-1,-1)
+V.Local.iUB.declare(Long,-1)
+Gui.F_New_Parts..Visible(False)
+
+F.Intrinsic.Control.DoEvents
+Gui.F_New_Parts.cmdSave.SetFocus
+Gui.F_New_Parts.gsfgParts.Commit
+Gui.F_New_Parts.cmdSave.SetFocus
+F.Intrinsic.Control.DoEvents
+
+F.Intrinsic.Math.Sub(V.Screen.F_New_Parts!gsfgParts.Rows,1,V.Local.iRows)
+F.Intrinsic.Control.For(V.Local.iR,1,V.Local.iRows,1)
+	V.Local.bInvalid.Set(False)
+
+	Gui.F_New_Parts.gsfgParts.ReadRow(V.Local.iR,V.Local.sRows)
+	F.Intrinsic.Math.Add(V.Local.iUB,1,V.Local.iUB)
+	F.Intrinsic.Control.If(V.Local.iUB,=,0)
+		V.Local.sParts.Redim(0,0)
+	F.Intrinsic.Control.Else
+		V.Local.sParts.RedimPreserve(0,V.Local.iUB)
+	F.Intrinsic.Control.EndIf
+	V.Local.sParts(v.Local.iUB).Set(V.Local.sRows)
+
+	F.Intrinsic.String.Split(V.Local.sRows,"*!*",V.Local.sRows)
+
+	F.Intrinsic.Math.IsNumeric(V.Local.sRows(2).trim,V.Local.bNumeric)
+	F.Intrinsic.Control.If(V.Local.sRows(1).trim,=,"")
+		V.Local.bInvalid.Set(True)
+	F.Intrinsic.Control.ElseIf(V.Local.sRows(2).trim,=,"")
+		V.Local.bInvalid.Set(True)
+	F.Intrinsic.Control.ElseIf(V.Local.sRows(3).trim,=,"")
+		V.Local.bInvalid.Set(True)
+	F.Intrinsic.Control.ElseIf(V.Local.bNumeric,=,False)
+		V.Local.bInvalid.Set(True)
+	'Check if valid PL
+	F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.Control.If(V.Local.bInvalid,=,True)
+		F.Intrinsic.UI.Msgbox("Please complete all fields and verify all cost fields are numeric before continuing.")
+		Gui.F_New_Parts..Visible(True)
+		F.Intrinsic.Control.ExitSub
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(V.Local.iR)
+
+F.Intrinsic.Control.For(V.Local.iR,0,V.Local.sParts.ubound,1)
+	F.Intrinsic.String.Split(V.Local.sParts(v.Local.iR),"*!*",V.Local.sRows)
+'	F.Global.Inventory.CreatePart(V.uGlobal.uBOMUpdate(v.Local.iuBound)!Part,V.uGlobal.uBOMUpdate(v.Local.iuBound)!UM,V.Local.desc.RTrim,"","",V.uGlobal.uBOMUpdate(v.Local.iuBound)!Source,"","",0,"NOMAINT ")
+	F.Global.Inventory.CreatePart(V.Local.sRows(0),V.Local.sRows(4),V.Local.sRows(1),"",V.Local.sRows(3),V.Local.sRows(5),"","",0,"NOMAINT ")
+	F.Intrinsic.String.Concat("SELECT AMT_COST FROM INVENTORY_MSTR WHERE PART='",V.Local.sRows(0),"'",V.Local.sSQL)
+	F.ODBC.Connection!Conn.OpenRecordsetRW("rstPart",V.Local.sSQL)
+	F.Intrinsic.Control.If(V.ODBC.Conn!rstPart.EOF,<>,True)
+		F.ODBC.Conn!rstPart.Set!AMT_COST(V.Local.sRows(2))
+		'standard costs added for Marks?
+		F.ODBC.Conn!rstPart.Update
+	F.Intrinsic.Control.EndIf
+	F.ODBC.Conn!rstPart.Close
+F.Intrinsic.Control.Next(V.Local.iR)
+
+F.Intrinsic.Control.CallSub(Bomupload_cont)
+
+program.sub.cmdsave_click.end
+
+Program.Sub.BOMUpload_Cont.Start
+F.Intrinsic.Control.CallSub(Create_boms)
+F.Intrinsic.Control.CallSub(Bom_children)
+F.Intrinsic.Control.CallSub(Correct_values,"iUBound",V.args.iuBound)
+Gui.Process.lblstatus.Caption("Uploading Routers")
+F.Intrinsic.Control.CallSub(Set_router_um)
+F.Intrinsic.Control.CallSub(Router_upload)
+F.Intrinsic.Control.CallSub(Destroy_object)
+'F.Intrinsic.String.RPad(V.Caller.User," ",8,V.Local.sUser)
+'F.Intrinsic.String.Concat(V.Caller.CompanyCode," ",V.Local.sUser," ","1SHOTGI ",V.Caller.CompanyCode," REFLAGB",V.Local.sCommand)
+'SMC 12/17/10
+'_________________
+'F.Intrinsic.Task.LaunchGSSSync("SYS050","-C",V.Local.sCommand)
+'_________________
+'This addresses an issue in CreatePart found on 8/12/11
+F.ODBC.Connection!Conn.Execute("UPDATE INVENTORY_MST2 SET DESCRIPTION_3='' WHERE DESCRIPTION_3 LIKE '%000000'")
+F.Intrinsic.ui.Msgbox("Import Complete.","Complete")
+F.Intrinsic.Control.End
+
+
+Program.Sub.BOMUpload_Cont.End
+
+Program.Sub.Mark_INV_Update.Start
+V.Local.fLabor.declare(Float)
+V.Local.fMaterial.declare(Float)
+V.Local.fCost.declare(Float)
+V.Local.sSQL.declare(String)
+
+F.Intrinsic.Debug.Stop
+F.Automation.MSExcel.ReadCell("ROUTER",V.Args.iR,4,V.Local.fLabor)
+F.Automation.MSExcel.ReadCell("ROUTER",V.Args.iR,5,V.Local.fMaterial)
+F.Intrinsic.Math.Add(V.Local.fLabor,V.Local.fMaterial,V.Local.fCost)
+
+F.Intrinsic.String.Concat("SELECT * FROM FG_STD_COST WHERE PART='",V.Args.Part,"'",V.Local.sSQL)
+F.ODBC.Connection!Conn.OpenRecordsetRW("rstPart",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.Conn!rstPart.EOF,=,True)
+	F.ODBC.Conn!rstPart.AddNew
+	F.ODBC.Conn!rstPart.Set!PART(V.Args.Part)
+	F.ODBC.Conn!rstPart.Set!OUTSIDE(0)
+	F.ODBC.Conn!rstPart.Set!AVERAGE_COST(0)
+	F.ODBC.Conn!rstPart.Set!STANDARD_COST(0)
+	F.ODBC.Conn!rstPart.Set!PURCHASE_COST(0)
+	F.ODBC.Conn!rstPart.Set!LATEST_COST(0)
+	F.ODBC.Conn!rstPart.Set!OVERHEAD(0)
+	F.ODBC.Conn!rstPart.Set!HOURS(0)
+	F.ODBC.Conn!rstPart.Set!FILLER("000000000000")
+F.Intrinsic.Control.EndIf
+F.ODBC.Conn!rstPart.Set!LABOR(V.Local.fLabor)
+F.ODBC.Conn!rstPart.Set!MATERIAL(V.Local.fMaterial)
+F.ODBC.Conn!rstPart.Update
+F.ODBC.Conn!rstPart.Close
+
+F.Intrinsic.String.Concat("SELECT PRODUCT_LINE,AMT_COST FROM INVENTORY_MSTR WHERE PART='",V.Args.Part,"'",V.Local.sSQL)
+F.ODBC.Connection!Conn.OpenRecordsetRW("rstPart",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.Conn!rstPart.EOF,<>,True)
+	f.ODBC.Conn!rstPart.Set!PRODUCT_LINE(V.Global.sPL)
+	F.ODBC.Conn!rstPart.Set!AMT_COST(V.Local.fCost)
+	F.ODBC.Conn!rstPart.Update
+F.Intrinsic.Control.EndIf
+F.ODBC.Conn!rstPart.Close
+
+F.Intrinsic.Variable.AddRV("Cost",V.Local.fCost)
+
+Program.Sub.Mark_INV_Update.End
+
+program.sub.f_new_parts_resize.start
+V.Local.X.declare(Long)
+V.Local.Y.declare(Long)
+
+F.Intrinsic.Control.If(V.Screen.F_New_Parts.Width,<,8450)
+	Gui.F_New_Parts..Size(8450,V.Screen.F_New_Parts.Height)
+F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.If(V.Screen.F_New_Parts.Height,<,5200)
+	Gui.F_New_Parts..Size(V.Screen.F_New_Parts.Width,5200)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Math.Sub(V.Screen.F_New_Parts.Width,450,V.Local.X)
+F.Intrinsic.Math.Sub(V.Screen.F_New_Parts.Height,1200,V.Local.Y)
+Gui.F_New_Parts.gsfgParts.Size(V.Local.X,V.Local.Y)
+
+F.Intrinsic.Math.Add(V.Local.Y,200,V.Local.Y)
+Gui.F_New_Parts.cmdSave.Position(V.Screen.F_New_Parts!cmdSave.Left,V.Local.Y)
+
+program.sub.f_new_parts_resize.end
+
+
